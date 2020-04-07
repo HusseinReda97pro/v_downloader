@@ -6,6 +6,7 @@ import '../widgets/helper/ensure_visible.dart.dart';
 import 'download.dart';
 import 'package:v_downloader/ShardData/conecctedDaata.dart';
 import 'package:scoped_model/scoped_model.dart';
+import 'package:firebase_admob/firebase_admob.dart';
 
 class Home extends StatefulWidget {
   final Connectedmodel model;
@@ -19,8 +20,55 @@ class Home extends StatefulWidget {
 class _HomeState extends State<Home> {
   var urlController = TextEditingController();
   final _urlFocusNode = FocusNode();
-
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+  BannerAd _bannerAd;
+  bool firstClick = true;
+
+// for ads
+  static const MobileAdTargetingInfo targetingInfo = MobileAdTargetingInfo(
+    // keywords: <String>['flutterio', 'beautiful apps'],
+    contentUrl: 'https://flutter.io',
+    childDirected: false,
+    testDevices: <String>[], // Android emulators are considered test devices
+  );
+
+  BannerAd createBannerAd() {
+    return BannerAd(
+      adUnitId: 'ca-app-pub-9506840191616541/7140701536',
+      size: AdSize.smartBanner,
+      targetingInfo: targetingInfo,
+      listener: (MobileAdEvent event) {
+        print("BannerAd event is $event");
+      },
+    );
+  }
+
+  InterstitialAd createInterstitialAd() {
+    return InterstitialAd(
+      adUnitId: 'ca-app-pub-9506840191616541/1002776395',
+      //  adUnitId: BannerAd.testAdUnitId,
+      targetingInfo: targetingInfo,
+      listener: (MobileAdEvent event) {
+        print("InterstitialAd event is $event");
+      },
+    );
+  }
+
+  @override
+  void initState() {
+    FirebaseAdMob.instance
+        .initialize(appId: 'ca-app-pub-9506840191616541~8225056297');
+    _bannerAd = createBannerAd()
+      ..load()
+      ..show();
+    super.initState();
+  }
+
+  @override
+  void dispose() {
+    _bannerAd.dispose();
+    super.dispose();
+  }
 
   Widget _buildPlayListTextField() {
     return EnsureVisibleWhenFocused(
@@ -75,42 +123,34 @@ class _HomeState extends State<Home> {
           shape:
               RoundedRectangleBorder(borderRadius: BorderRadius.circular(30.0)),
           onPressed: () async {
-            var tof = model.validateURL(urlController.text);
-            if (_formKey.currentState.validate() && tof) {
-              if (urlController.text.contains('list=')) {
-                var playistId = model.getListId(urlController.text.toString());
-                try {
-                  model.getPlayListData(playistId);
-                  Navigator.push(
-                      context,
-                      MaterialPageRoute(
-                          builder: (context) => Download(widget.model)));
-                } catch (e) {
-                  print(e);
-                  errorMessage();
-                }
-              } else {
-                if (urlController.text.contains('youtu.be/')) {
+            if (firstClick) {
+              createInterstitialAd()
+                ..load()
+                ..show();
+              firstClick = !firstClick;
+            } else {
+              firstClick = !firstClick;
+              var tof = model.validateURL(urlController.text);
+              if (_formKey.currentState.validate() && tof) {
+                if (urlController.text.contains('list=')) {
+                  var playistId =
+                      model.getListId(urlController.text.toString());
                   try {
-                    var videoId = urlController.text.split('youtu.be/')[1];
-                    print(videoId);
-                    await model.downloadVideoData(videoId);
-                    Navigator.of(context).push(
-                      MaterialPageRoute(
-                        builder: (BuildContext context) {
-                          return VideoPlayer(widget.model);
-                        },
-                      ),
-                    );
+                    model.getPlayListData(playistId);
+                    Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                            builder: (context) => Download(widget.model)));
                   } catch (e) {
                     print(e);
                     errorMessage();
                   }
                 } else {
-                  if (urlController.text.contains('watch?v=')) {
+                  if (urlController.text.contains('youtu.be/')) {
                     try {
-                      var videoId = urlController.text.split('watch?v=')[1];
-                      model.downloadVideoData(videoId);
+                      var videoId = urlController.text.split('youtu.be/')[1];
+                      print(videoId);
+                      await model.downloadVideoData(videoId);
                       Navigator.of(context).push(
                         MaterialPageRoute(
                           builder: (BuildContext context) {
@@ -122,26 +162,44 @@ class _HomeState extends State<Home> {
                       print(e);
                       errorMessage();
                     }
+                  } else {
+                    if (urlController.text.contains('watch?v=')) {
+                      try {
+                        var videoId = urlController.text.split('watch?v=')[1];
+                        model.downloadVideoData(videoId);
+                        Navigator.of(context).push(
+                          MaterialPageRoute(
+                            builder: (BuildContext context) {
+                              return VideoPlayer(widget.model);
+                            },
+                          ),
+                        );
+                      } catch (e) {
+                        print(e);
+                        errorMessage();
+                      }
+                    }
                   }
                 }
+              } else {
+                showDialog(
+                    context: context,
+                    builder: (BuildContext context) {
+                      return AlertDialog(
+                        title: Text('Something Went Wrong!!'),
+                        content:
+                            Text('Url invalid or An unkown Error Occurred!'),
+                        actions: <Widget>[
+                          FlatButton(
+                            onPressed: () {
+                              Navigator.of(context).pop();
+                            },
+                            child: Text('Okay'),
+                          )
+                        ],
+                      );
+                    });
               }
-            } else {
-              showDialog(
-                  context: context,
-                  builder: (BuildContext context) {
-                    return AlertDialog(
-                      title: Text('Something Went Wrong!!'),
-                      content: Text('Url invalid or An unkown Error Occurred!'),
-                      actions: <Widget>[
-                        FlatButton(
-                          onPressed: () {
-                            Navigator.of(context).pop();
-                          },
-                          child: Text('Okay'),
-                        )
-                      ],
-                    );
-                  });
             }
           },
         ));

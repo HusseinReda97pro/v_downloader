@@ -17,7 +17,7 @@ class VideoPlayer extends StatefulWidget with WidgetsBindingObserver {
   }
 }
 
-class _VideoPlayerState extends State<VideoPlayer> with WidgetsBindingObserver{
+class _VideoPlayerState extends State<VideoPlayer> with WidgetsBindingObserver {
   // @override
   // void initState() {
   //   try {
@@ -93,13 +93,15 @@ class _VideoPlayerState extends State<VideoPlayer> with WidgetsBindingObserver{
                     height: MediaQuery.of(context).size.height * 0.15,
                   ),
                   YoutubePlayer(
-                    context: context,
-                    videoId: model.video.id,
-                    liveUIColor: Colors.redAccent,
-                    flags: YoutubePlayerFlags(
-                      autoPlay: false,
-                      showVideoProgressIndicator: true,
+                    controller: YoutubePlayerController(
+                      initialVideoId: model.video.id,
+                      flags: YoutubePlayerFlags(
+                        autoPlay: true,
+                        mute: false,
+                      ),
                     ),
+                    liveUIColor: Colors.redAccent,
+                    showVideoProgressIndicator: true,
                   ),
                   SizedBox(
                     height: 5,
